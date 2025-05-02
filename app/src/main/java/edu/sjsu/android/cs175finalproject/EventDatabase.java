@@ -79,11 +79,13 @@ public class EventDatabase extends SQLiteOpenHelper {
             boolean important = cursor.getInt(cursor.getColumnIndexOrThrow(IMPORTANT)) == 1;
 
             Event event = new Event(id, title, description, dateMillis, category, reminder, recurrence, important);
+            events.add(event); // ✅ You forgot this line!
         }
 
         cursor.close();
         return events;
     }
+
 
     public void deleteEvent(int eventId) {
         SQLiteDatabase db = getWritableDatabase();
