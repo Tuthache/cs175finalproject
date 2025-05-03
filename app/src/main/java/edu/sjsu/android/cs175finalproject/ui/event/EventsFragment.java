@@ -130,7 +130,7 @@ public class EventsFragment extends Fragment {
         adapter = new EventAdapter(events);
         recyclerView.setAdapter(adapter);
 
-        // Re-apply the layout manager based on current toggle state
+        // reapply the layout manager based on current toggle state
         if (toggleButton.isChecked()) {
             recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 2));
         } else {

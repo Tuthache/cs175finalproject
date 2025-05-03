@@ -15,6 +15,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // set up bottom nav bar
         BottomNavigationView bottomNav = findViewById(R.id.bottom_nav);
 
         NavHostFragment navHostFragment =
@@ -22,6 +23,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (navHostFragment != null) {
             NavController navController = navHostFragment.getNavController();
+            // link bottom nav to nav controller
             NavigationUI.setupWithNavController(bottomNav, navController);
         }
     }

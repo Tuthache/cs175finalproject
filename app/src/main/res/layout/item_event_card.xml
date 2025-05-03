@@ -25,5 +25,13 @@
             android:textSize="14sp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/event_category"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="#555555"/>
+
     </LinearLayout>
 </androidx.cardview.widget.CardView>

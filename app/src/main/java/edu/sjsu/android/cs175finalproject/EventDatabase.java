@@ -40,6 +40,8 @@ public class EventDatabase extends SQLiteOpenHelper {
     }
 
     public long insertEvent(Event event) {
+        // add new row to database w new event details
+
         SQLiteDatabase db = getWritableDatabase();
         ContentValues values = new ContentValues();
         values.put(TITLE, event.getTitle());
@@ -54,6 +56,8 @@ public class EventDatabase extends SQLiteOpenHelper {
 
 
     public ArrayList<Event> getUpcomingEvents(int limit) {
+        // get all upcoming events sorted by date
+
         ArrayList<Event> events = new ArrayList<>();
         SQLiteDatabase db = getReadableDatabase();
 
@@ -88,6 +92,8 @@ public class EventDatabase extends SQLiteOpenHelper {
 
 
     public void deleteEvent(int eventId) {
+        // remove event from database using its id
+
         SQLiteDatabase db = getWritableDatabase();
         db.delete(TABLE_NAME, ID + " = ?", new String[]{String.valueOf(eventId)});
     }

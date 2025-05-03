@@ -7,8 +7,6 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
-import edu.sjsu.android.cs175finalproject.Event;
-import edu.sjsu.android.cs175finalproject.R;
 
 public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> {
 
@@ -16,15 +14,17 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
 
     public EventAdapter(List<Event> events) {
         this.events = events;
+        // Sort important events to the top
+        events.sort((e1, e2) -> Boolean.compare(!e1.isImportant(), !e2.isImportant()));
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        public TextView titleView, dateView;
-
+        public TextView titleView, dateView, categoryView;
         public ViewHolder(View view) {
             super(view);
             titleView = view.findViewById(R.id.event_title);
             dateView = view.findViewById(R.id.event_date);
+            categoryView = view.findViewById(R.id.event_category);
         }
     }
 
@@ -41,6 +41,14 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
         Event e = events.get(position);
         holder.titleView.setText(e.getTitle());
         holder.dateView.setText(new java.util.Date(e.getDateMillis()).toString());
+        holder.categoryView.setText("Category: " + e.getCategory());
+
+        // highlight important events
+        if (e.isImportant()) {
+            holder.itemView.setBackgroundColor(0xFFFFE0B2); // light orange
+        } else {
+            holder.itemView.setBackgroundColor(0xFFFFFFFF); // white
+        }
     }
 
     @Override
