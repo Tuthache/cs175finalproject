@@ -18,6 +18,12 @@
             android:checked="false"
             android:layout_margin="8dp" />
 
+        <SearchView
+            android:id="@+id/search_events"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:queryHint="Search events..." />
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recycler_events"
             android:layout_width="match_parent"

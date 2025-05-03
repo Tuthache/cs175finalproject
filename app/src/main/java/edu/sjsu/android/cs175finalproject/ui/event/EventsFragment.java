@@ -9,6 +9,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.SearchView;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 
@@ -49,7 +50,7 @@ public class EventsFragment extends Fragment {
 
         db = new EventDatabase(requireContext());
         ArrayList<Event> eventList = db.getUpcomingEvents(Integer.MAX_VALUE);
-        adapter = new EventAdapter(eventList);
+        adapter = new EventAdapter(getContext(), eventList);
 
         // Default: List view
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -65,6 +66,23 @@ public class EventsFragment extends Fragment {
 
         FloatingActionButton fab = binding.fabAddEvent;
         fab.setOnClickListener(v -> showAddEventDialog());
+
+        SearchView searchView = root.findViewById(R.id.search_events);
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                adapter.getFilter().filter(query);
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                adapter.getFilter().filter(newText);
+                return true;
+            }
+        });
+
 
         return root;
     }
@@ -127,7 +145,7 @@ public class EventsFragment extends Fragment {
 
     private void refreshEventList() {
         ArrayList<Event> events = db.getUpcomingEvents(Integer.MAX_VALUE);
-        adapter = new EventAdapter(events);
+        adapter = new EventAdapter(requireContext(), events);
         recyclerView.setAdapter(adapter);
 
         // reapply the layout manager based on current toggle state
