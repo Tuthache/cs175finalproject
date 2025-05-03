@@ -65,7 +65,7 @@ public class EventDatabase extends SQLiteOpenHelper {
                 null,
                 null,
                 DATE + " ASC",
-                String.valueOf(limit)
+                limit > 0 ? String.valueOf(limit) : null //null returns all upcoming events
         );
 
         while (cursor.moveToNext()) {
@@ -79,7 +79,7 @@ public class EventDatabase extends SQLiteOpenHelper {
             boolean important = cursor.getInt(cursor.getColumnIndexOrThrow(IMPORTANT)) == 1;
 
             Event event = new Event(id, title, description, dateMillis, category, reminder, recurrence, important);
-            events.add(event); // ✅ You forgot this line!
+            events.add(event);
         }
 
         cursor.close();
