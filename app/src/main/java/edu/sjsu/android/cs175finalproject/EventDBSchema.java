@@ -1,6 +1,7 @@
 package edu.sjsu.android.cs175finalproject;
 
 public final class EventDBSchema {
+
     // defines constants for sqlite table n column names to keep consistent
     private EventDBSchema() {}
 

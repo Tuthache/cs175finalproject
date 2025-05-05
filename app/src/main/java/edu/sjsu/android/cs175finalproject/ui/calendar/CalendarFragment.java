@@ -39,7 +39,7 @@ public class CalendarFragment extends Fragment {
 
         // Highlight days with events
         for (LocalDate date : dateEventMap.keySet()) {
-            CalendarDay day = CalendarDay.from(date.getYear(), date.getMonthValue(), date.getDayOfMonth());
+            CalendarDay day = CalendarDay.from(date.getYear(), date.getMonthValue()-1, date.getDayOfMonth());
             calendarView.addDecorator(new EventDecorator(Color.RED, Collections.singleton(day)));
         }
 
@@ -48,7 +48,7 @@ public class CalendarFragment extends Fragment {
             @Override
             public void onDateSelected(@NonNull MaterialCalendarView widget,
                                        @NonNull CalendarDay date, boolean selected) {
-                LocalDate localDate = LocalDate.of(date.getYear(), date.getMonth(), date.getDay());
+                LocalDate localDate = LocalDate.of(date.getYear(), date.getMonth()+1, date.getDay());
                 List<Event> events = dateEventMap.getOrDefault(localDate, new ArrayList<>());
 
                 if (events.isEmpty()) {

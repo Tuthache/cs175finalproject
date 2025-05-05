@@ -6,16 +6,19 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.SearchView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -24,6 +27,8 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 
 import edu.sjsu.android.cs175finalproject.Event;
 import edu.sjsu.android.cs175finalproject.EventAdapter;
@@ -38,6 +43,10 @@ public class EventsFragment extends Fragment {
     private EventDatabase db;
     private EventAdapter adapter;
     private ToggleButton toggleButton;
+    private Spinner sortFilterSpinner;
+    private Spinner categoryFilterSpinner;
+    private ArrayAdapter<String> dynamicCategoryAdapter;
+    private Set<String> categorySet = new HashSet<>();
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -47,12 +56,34 @@ public class EventsFragment extends Fragment {
 
         recyclerView = binding.recyclerEvents;
         toggleButton = binding.toggleViewMode;
+        sortFilterSpinner = binding.spinnerSortFilter;
+        categoryFilterSpinner = binding.spinnerCategoryFilter;
 
+        // init database and load data
         db = new EventDatabase(requireContext());
         ArrayList<Event> eventList = db.getUpcomingEvents(Integer.MAX_VALUE);
-        adapter = new EventAdapter(getContext(), eventList);
+        for (Event e : eventList) categorySet.add(e.getCategory());
 
-        // Default: List view
+        // setup adapter and attach swipe support
+        adapter = new EventAdapter(getContext(), eventList);
+        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(adapter.getSwipeCallback());
+        itemTouchHelper.attachToRecyclerView(recyclerView);
+
+        adapter.setOnEventActionListener(new EventAdapter.OnEventActionListener() {
+            @Override
+            public void onEdit(Event event) {
+                db.updateEvent(event);
+                refreshEventList();
+            }
+
+            @Override
+            public void onDelete(Event event) {
+                db.deleteEvent(event.getId());
+                refreshEventList();
+            }
+        });
+
+        // list vs grid view, default to list view
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(adapter);
 
@@ -64,11 +95,12 @@ public class EventsFragment extends Fragment {
             }
         });
 
+        // add event button
         FloatingActionButton fab = binding.fabAddEvent;
         fab.setOnClickListener(v -> showAddEventDialog());
 
+        // search
         SearchView searchView = root.findViewById(R.id.search_events);
-
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
@@ -83,8 +115,54 @@ public class EventsFragment extends Fragment {
             }
         });
 
+        // filter
+        ArrayAdapter<CharSequence> spinnerAdapter = ArrayAdapter.createFromResource(requireContext(),
+                R.array.sort_filter_options, android.R.layout.simple_spinner_item);
+        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        sortFilterSpinner.setAdapter(spinnerAdapter);
+
+        sortFilterSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                switch (position) {
+                    case 0: adapter.resetFilters(); break;
+                    case 1: adapter.filterByImportantOnly(); break;
+                    case 2: adapter.sortByTimeAscending(); break;
+                    case 3: adapter.sortByTimeDescending(); break;
+                }
+            }
+
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
+
+        updateCategorySpinner();
+
+        categoryFilterSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                String category = parent.getItemAtPosition(position).toString();
+                if (category.equals("All")) {
+                    adapter.resetFilters();
+                } else {
+                    adapter.filterByCategory(category);
+                }
+            }
+
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
 
         return root;
+    }
+
+    private void updateCategorySpinner() {
+        ArrayList<String> categories = new ArrayList<>();
+        categories.add("All");
+        categories.addAll(categorySet);
+        dynamicCategoryAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, categories);
+        dynamicCategoryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        categoryFilterSpinner.setAdapter(dynamicCategoryAdapter);
     }
 
     @Override
@@ -137,6 +215,8 @@ public class EventsFragment extends Fragment {
                             category, reminder, recurrence, important
                     );
                     db.insertEvent(event);
+                    categorySet.add(category);
+                    updateCategorySpinner();
                     refreshEventList();
                 })
                 .setNegativeButton("Cancel", null)
@@ -148,13 +228,10 @@ public class EventsFragment extends Fragment {
         adapter = new EventAdapter(requireContext(), events);
         recyclerView.setAdapter(adapter);
 
-        // reapply the layout manager based on current toggle state
         if (toggleButton.isChecked()) {
             recyclerView.setLayoutManager(new GridLayoutManager(getContext(), 2));
         } else {
             recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         }
     }
-
-
 }

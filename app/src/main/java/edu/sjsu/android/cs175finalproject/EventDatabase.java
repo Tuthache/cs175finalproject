@@ -8,6 +8,7 @@ import android.database.Cursor;
 import android.database.sqlite.*;
 import java.util.*;
 
+// helper class to create/manage our sqlite event database
 public class EventDatabase extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "eventDatabase";
@@ -54,7 +55,6 @@ public class EventDatabase extends SQLiteOpenHelper {
         return db.insert(TABLE_NAME, null, values);
     }
 
-
     public ArrayList<Event> getUpcomingEvents(int limit) {
         // get all upcoming events sorted by date
 
@@ -89,7 +89,22 @@ public class EventDatabase extends SQLiteOpenHelper {
         cursor.close();
         return events;
     }
+    public void updateEvent(Event event) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(TITLE, event.getTitle());
+        values.put(DESCRIPTION, event.getDescription());
+        values.put(DATE, event.getDateMillis());
+        values.put(CATEGORY, event.getCategory());
+        values.put(REMINDER, event.getReminderMinutes());
+        values.put(RECURRENCE, event.getRecurrence());
+        values.put(IMPORTANT, event.isImportant() ? 1 : 0);
 
+        db.update(TABLE_NAME, values,
+                ID + " = ?",
+                new String[]{String.valueOf(event.getId())});
+        db.close();
+    }
 
     public void deleteEvent(int eventId) {
         // remove event from database using its id
