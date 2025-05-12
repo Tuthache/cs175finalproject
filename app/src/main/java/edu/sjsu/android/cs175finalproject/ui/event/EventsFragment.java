@@ -181,7 +181,13 @@ public class EventsFragment extends Fragment {
         TextView dateText = dialogView.findViewById(R.id.selected_date);
         EditText categoryInput = dialogView.findViewById(R.id.input_category);
         EditText reminderInput = dialogView.findViewById(R.id.input_reminder);
-        EditText recurrenceInput = dialogView.findViewById(R.id.input_recurrence);
+        Spinner recurrenceSpinner = dialogView.findViewById(R.id.spinner_recurrence);
+        ArrayAdapter<CharSequence> recurrenceAdapter = ArrayAdapter.createFromResource(
+                getContext(),
+                R.array.recurrence_options,
+                android.R.layout.simple_spinner_item);
+        recurrenceAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        recurrenceSpinner.setAdapter(recurrenceAdapter);
         CheckBox importantCheckbox = dialogView.findViewById(R.id.checkbox_important);
 
         final long[] selectedDateMillis = {0};
@@ -198,6 +204,17 @@ public class EventsFragment extends Fragment {
                     c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH));
             dpd.show();
         });
+
+        Spinner recurrenceDurationSpinner = dialogView.findViewById(R.id.spinner_recurrence_duration);
+
+        // fill dropdown
+        ArrayAdapter<CharSequence> durationAdapter = ArrayAdapter.createFromResource(
+                getContext(),
+                R.array.recurrence_duration_options,
+                android.R.layout.simple_spinner_item
+        );
+        durationAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        recurrenceDurationSpinner.setAdapter(durationAdapter);
 
         AlertDialog dialog = new AlertDialog.Builder(getContext())
                 .setTitle("Add Event")
@@ -231,7 +248,7 @@ public class EventsFragment extends Fragment {
                 // apply default values
                 String desc = descriptionInput.getText().toString().trim();
                 String category = categoryInput.getText().toString().trim();
-                String recurrence = recurrenceInput.getText().toString().trim();
+                String recurrence = recurrenceSpinner.getSelectedItem().toString();
                 boolean important = importantCheckbox.isChecked();
 
                 if (desc.isEmpty()) desc = "";
@@ -248,12 +265,20 @@ public class EventsFragment extends Fragment {
                     }
                 }
 
+                int repeatMonths = 1;
+                String durationSelected = recurrenceDurationSpinner.getSelectedItem().toString();
+                switch (durationSelected) {
+                    case "3 months": repeatMonths = 3; break;
+                    case "6 months": repeatMonths = 6; break;
+                    case "12 months": repeatMonths = 12; break;
+                }
+
                 // create and save event
                 Event event = new Event(
                         0, title, desc, selectedDateMillis[0],
                         category, reminder, recurrence, important
                 );
-                db.insertEvent(event);
+                db.insertEvent(event, repeatMonths);
                 categorySet.add(category);
                 updateCategorySpinner();
                 refreshEventList();

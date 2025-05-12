@@ -12,11 +12,13 @@ import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Filter;
 import android.widget.Filterable;
+import android.widget.Spinner;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -219,7 +221,14 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
                     TextView dateText = dialogView.findViewById(R.id.selected_date);
                     EditText categoryInput = dialogView.findViewById(R.id.input_category);
                     EditText reminderInput = dialogView.findViewById(R.id.input_reminder);
-                    EditText recurrenceInput = dialogView.findViewById(R.id.input_recurrence);
+                    Spinner recurrenceSpinner = dialogView.findViewById(R.id.spinner_recurrence);
+                    // set up spinner with recurrence options
+                    ArrayAdapter<CharSequence> recurrenceAdapter = ArrayAdapter.createFromResource(
+                            context,
+                            R.array.recurrence_options, // defined in strings.xml
+                            android.R.layout.simple_spinner_item);
+                    recurrenceAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                    recurrenceSpinner.setAdapter(recurrenceAdapter);
                     CheckBox importantCheckbox = dialogView.findViewById(R.id.checkbox_important);
 
                     // Pre-fill existing values
@@ -228,7 +237,12 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
                     dateText.setText(new java.util.Date(event.getDateMillis()).toString());
                     categoryInput.setText(event.getCategory());
                     reminderInput.setText(String.valueOf(event.getReminderMinutes()));
-                    recurrenceInput.setText(event.getRecurrence());
+                    int selectedIndex = 0;
+                    switch (event.getRecurrence()) {
+                        case "Weekly": selectedIndex = 1; break;
+                        case "Monthly": selectedIndex = 2; break;
+                    }
+                    recurrenceSpinner.setSelection(selectedIndex);
                     importantCheckbox.setChecked(event.isImportant());
                     final long[] selectedDateMillis = {event.getDateMillis()};
 
@@ -255,7 +269,7 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
                                 event.setDateMillis(selectedDateMillis[0]);
                                 event.setCategory(categoryInput.getText().toString());
                                 event.setReminderMinutes(Integer.parseInt(reminderInput.getText().toString()));
-                                event.setRecurrence(recurrenceInput.getText().toString());
+                                event.setRecurrence(recurrenceSpinner.getSelectedItem().toString());
                                 event.setImportant(importantCheckbox.isChecked());
                                 if (eventActionListener != null) eventActionListener.onEdit(event);
                             })

@@ -11,4 +11,15 @@
         <item>Sort by time ↑</item>
         <item>Sort by time ↓</item>
     </string-array>
+    <string-array name="recurrence_duration_options">
+        <item>1 month</item>
+        <item>3 months</item>
+        <item>6 months</item>
+        <item>12 months</item>
+    </string-array>
+    <string-array name="recurrence_options">
+        <item>None</item>
+        <item>Weekly</item>
+        <item>Monthly</item>
+    </string-array>
 </resources>

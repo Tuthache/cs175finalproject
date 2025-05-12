@@ -40,19 +40,51 @@ public class EventDatabase extends SQLiteOpenHelper {
         onCreate(db);
     }
 
-    public long insertEvent(Event event) {
-        // add new row to database w new event details
-
+    public long insertEvent(Event event, int repeatMonths) {
         SQLiteDatabase db = getWritableDatabase();
+        long baseId = insertSingleEvent(db, event);
+
+        String recurrence = event.getRecurrence();
+        if (recurrence != null && !recurrence.equalsIgnoreCase("None")) {
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTimeInMillis(event.getDateMillis());
+
+            Calendar end = Calendar.getInstance();
+            end.setTimeInMillis(event.getDateMillis());
+            end.add(Calendar.MONTH, repeatMonths);
+
+            while (calendar.before(end)) {
+                if (recurrence.equalsIgnoreCase("Weekly")) {
+                    calendar.add(Calendar.WEEK_OF_YEAR, 1);
+                } else if (recurrence.equalsIgnoreCase("Monthly")) {
+                    calendar.add(Calendar.MONTH, 1);
+                } else {
+                    break;
+                }
+
+                Event repeated = new Event(
+                        0, event.getTitle(), event.getDescription(),
+                        calendar.getTimeInMillis(), event.getCategory(),
+                        event.getReminderMinutes(), "None", event.isImportant()
+                );
+                insertSingleEvent(db, repeated);
+            }
+        }
+
+        return baseId;
+    }
+
+    // helper method to reduce code duplication
+    private long insertSingleEvent(SQLiteDatabase db, Event event) {
         ContentValues values = new ContentValues();
-        values.put(TITLE, event.getTitle());
-        values.put(DESCRIPTION, event.getDescription());
-        values.put(DATE, event.getDateMillis());
-        values.put(CATEGORY, event.getCategory());
-        values.put(REMINDER, event.getReminderMinutes());
-        values.put(RECURRENCE, event.getRecurrence());
-        values.put(IMPORTANT, event.isImportant() ? 1 : 0);
-        return db.insert(TABLE_NAME, null, values);
+        values.put(EventDBSchema.EventTable.TITLE, event.getTitle());
+        values.put(EventDBSchema.EventTable.DESCRIPTION, event.getDescription());
+        values.put(EventDBSchema.EventTable.DATE, event.getDateMillis());
+        values.put(EventDBSchema.EventTable.CATEGORY, event.getCategory());
+        values.put(EventDBSchema.EventTable.REMINDER, event.getReminderMinutes());
+        values.put(EventDBSchema.EventTable.RECURRENCE, event.getRecurrence());
+        values.put(EventDBSchema.EventTable.IMPORTANT, event.isImportant() ? 1 : 0);
+        return db.insert(EventDBSchema.EventTable.TABLE_NAME, null, values);
     }
 
     public ArrayList<Event> getUpcomingEvents(int limit) {
