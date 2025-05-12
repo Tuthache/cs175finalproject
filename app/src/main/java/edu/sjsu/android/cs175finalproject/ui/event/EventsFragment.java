@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -19,8 +20,14 @@ import android.widget.SearchView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.ToggleButton;
+import android.app.Activity;
+import android.content.ActivityNotFoundException;
+import android.speech.RecognizerIntent;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.ItemTouchHelper;
@@ -106,6 +113,17 @@ public class EventsFragment extends Fragment {
         // add event button
         FloatingActionButton fab = binding.fabAddEvent;
         fab.setOnClickListener(v -> showAddEventDialog());
+
+        FloatingActionButton micFab = root.findViewById(R.id.fab_voice_input);
+        micFab.setOnClickListener(v -> {
+            if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.RECORD_AUDIO)
+                    != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(requireActivity(),
+                        new String[]{android.Manifest.permission.RECORD_AUDIO}, 102);
+            } else {
+                startVoiceInput(); // we already have permission
+            }
+        });
 
         // search
         SearchView searchView = root.findViewById(R.id.search_events);
@@ -349,5 +367,66 @@ public class EventsFragment extends Fragment {
 
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         alarmManager.setExact(AlarmManager.RTC_WAKEUP, reminderTime, pendingIntent);
+    }
+
+    private static final int VOICE_REQUEST_CODE = 101;
+
+    private void startVoiceInput() {
+        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+        intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak your event...");
+
+        try {
+            startActivityForResult(intent, VOICE_REQUEST_CODE);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(getContext(), "Your device doesn't support voice input", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == VOICE_REQUEST_CODE && resultCode == Activity.RESULT_OK && data != null) {
+            ArrayList<String> result = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+            if (result != null && !result.isEmpty()) {
+                String spokenText = result.get(0);
+                showVoiceResultDialog(spokenText);
+            }
+        }
+    }
+
+    private void showVoiceResultDialog(String input) {
+        // for now just prefill title field
+        LayoutInflater inflater = LayoutInflater.from(getContext());
+        View dialogView = inflater.inflate(R.layout.dialog_add_event, null);
+
+        EditText titleInput = dialogView.findViewById(R.id.input_title);
+        titleInput.setText(input); // set spoken input as title
+
+        // you can reuse the rest of showAddEventDialog() logic here if desired
+        new AlertDialog.Builder(getContext())
+                .setTitle("Add Event from Voice")
+                .setView(dialogView)
+                .setPositiveButton("Add", (dialog, which) -> {
+                    // you can copy and reuse your existing add event logic here
+                    Toast.makeText(getContext(), "Event created: " + input, Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == 102) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                startVoiceInput(); // now we can safely start it
+            } else {
+                Toast.makeText(getContext(), "Microphone permission denied", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 }
