@@ -199,28 +199,70 @@ public class EventsFragment extends Fragment {
             dpd.show();
         });
 
-        new AlertDialog.Builder(getContext())
+        AlertDialog dialog = new AlertDialog.Builder(getContext())
                 .setTitle("Add Event")
                 .setView(dialogView)
-                .setPositiveButton("Add", (dialog, which) -> {
-                    String title = titleInput.getText().toString();
-                    String desc = descriptionInput.getText().toString();
-                    String category = categoryInput.getText().toString();
-                    int reminder = Integer.parseInt(reminderInput.getText().toString());
-                    String recurrence = recurrenceInput.getText().toString();
-                    boolean important = importantCheckbox.isChecked();
-
-                    Event event = new Event(
-                            0, title, desc, selectedDateMillis[0],
-                            category, reminder, recurrence, important
-                    );
-                    db.insertEvent(event);
-                    categorySet.add(category);
-                    updateCategorySpinner();
-                    refreshEventList();
-                })
+                .setPositiveButton("Add", null) // we override later so it won't auto-dismiss
                 .setNegativeButton("Cancel", null)
-                .show();
+                .create();
+
+        dialog.setOnShowListener(dialogInterface -> {
+            Button addButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            addButton.setOnClickListener(v -> {
+                String title = titleInput.getText().toString().trim();
+
+                // validate required fields
+                boolean valid = true;
+
+                if (title.isEmpty()) {
+                    titleInput.setError("Title is required");
+                    valid = false;
+                }
+
+                if (selectedDateMillis[0] == 0) {
+                    dateText.setError("Please select a date");
+                    valid = false;
+                } else {
+                    dateText.setError(null); // clear error
+                }
+
+                if (!valid) return; // don't dismiss if invalid
+
+                // apply default values
+                String desc = descriptionInput.getText().toString().trim();
+                String category = categoryInput.getText().toString().trim();
+                String recurrence = recurrenceInput.getText().toString().trim();
+                boolean important = importantCheckbox.isChecked();
+
+                if (desc.isEmpty()) desc = "";
+                if (category.isEmpty()) category = "General";
+                if (recurrence.isEmpty()) recurrence = "None";
+
+                int reminder = 0;
+                String reminderStr = reminderInput.getText().toString().trim();
+                if (!reminderStr.isEmpty()) {
+                    try {
+                        reminder = Integer.parseInt(reminderStr);
+                    } catch (NumberFormatException e) {
+                        reminder = 0;
+                    }
+                }
+
+                // create and save event
+                Event event = new Event(
+                        0, title, desc, selectedDateMillis[0],
+                        category, reminder, recurrence, important
+                );
+                db.insertEvent(event);
+                categorySet.add(category);
+                updateCategorySpinner();
+                refreshEventList();
+
+                dialog.dismiss(); // now we close it manually
+            });
+        });
+
+        dialog.show();
     }
 
     private void refreshEventList() {
