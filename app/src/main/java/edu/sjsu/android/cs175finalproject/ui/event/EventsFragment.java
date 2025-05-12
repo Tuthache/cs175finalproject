@@ -405,12 +405,10 @@ public class EventsFragment extends Fragment {
         EditText titleInput = dialogView.findViewById(R.id.input_title);
         titleInput.setText(input); // set spoken input as title
 
-        // you can reuse the rest of showAddEventDialog() logic here if desired
         new AlertDialog.Builder(getContext())
                 .setTitle("Add Event from Voice")
                 .setView(dialogView)
                 .setPositiveButton("Add", (dialog, which) -> {
-                    // you can copy and reuse your existing add event logic here
                     Toast.makeText(getContext(), "Event created: " + input, Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Cancel", null)

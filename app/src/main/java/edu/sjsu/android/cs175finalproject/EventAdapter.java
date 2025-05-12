@@ -3,6 +3,7 @@ package edu.sjsu.android.cs175finalproject;
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -141,6 +142,20 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.ViewHolder> 
                             "\nRecurrence: " + e.getRecurrence() +
                             "\n\n" + e.getDescription())
                     .setPositiveButton("OK", null)
+                    .setNeutralButton("Share", (dialog, which) -> {
+                        String shareText = "Event: " + e.getTitle() +
+                                "\nDate: " + new java.text.SimpleDateFormat("EEE, MMM d 'at' h:mm a", Locale.getDefault()).format(new java.util.Date(e.getDateMillis())) +
+                                "\nCategory: " + e.getCategory() +
+                                "\nReminder: " + e.getReminderMinutes() + " min before" +
+                                "\nRecurrence: " + e.getRecurrence() +
+                                "\n\n" + e.getDescription();
+
+                        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+                        shareIntent.setType("text/plain");
+                        shareIntent.putExtra(Intent.EXTRA_SUBJECT, "Shared Event: " + e.getTitle());
+                        shareIntent.putExtra(Intent.EXTRA_TEXT, shareText);
+                        context.startActivity(Intent.createChooser(shareIntent, "Share Event Via"));
+                    })
                     .show();
         });
     }
