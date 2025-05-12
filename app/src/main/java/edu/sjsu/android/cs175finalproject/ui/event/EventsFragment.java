@@ -1,7 +1,12 @@
 package edu.sjsu.android.cs175finalproject.ui.event;
 
+import android.app.AlarmManager;
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
+import android.app.PendingIntent;
+import android.app.TimePickerDialog;
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -24,15 +29,18 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 
 import edu.sjsu.android.cs175finalproject.Event;
 import edu.sjsu.android.cs175finalproject.EventAdapter;
 import edu.sjsu.android.cs175finalproject.EventDatabase;
+import edu.sjsu.android.cs175finalproject.EventReminderReceiver;
 import edu.sjsu.android.cs175finalproject.R;
 import edu.sjsu.android.cs175finalproject.databinding.FragmentEventsBinding;
 
@@ -174,7 +182,7 @@ public class EventsFragment extends Fragment {
     private void showAddEventDialog() {
         LayoutInflater inflater = LayoutInflater.from(getContext());
         View dialogView = inflater.inflate(R.layout.dialog_add_event, null);
-
+        Calendar eventCalendar = Calendar.getInstance();
         EditText titleInput = dialogView.findViewById(R.id.input_title);
         EditText descriptionInput = dialogView.findViewById(R.id.input_description);
         Button dateButton = dialogView.findViewById(R.id.button_pick_date);
@@ -189,6 +197,10 @@ public class EventsFragment extends Fragment {
         recurrenceAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         recurrenceSpinner.setAdapter(recurrenceAdapter);
         CheckBox importantCheckbox = dialogView.findViewById(R.id.checkbox_important);
+        final boolean[] datePicked = {false};
+        final boolean[] timePicked = {false};
+        Button timeButton = dialogView.findViewById(R.id.button_pick_time);
+        TextView timeText = dialogView.findViewById(R.id.selected_time);
 
         final long[] selectedDateMillis = {0};
 
@@ -196,13 +208,29 @@ public class EventsFragment extends Fragment {
             Calendar c = Calendar.getInstance();
             DatePickerDialog dpd = new DatePickerDialog(getContext(),
                     (datePicker, year, month, day) -> {
-                        Calendar selected = Calendar.getInstance();
-                        selected.set(year, month, day);
-                        selectedDateMillis[0] = selected.getTimeInMillis();
-                        dateText.setText(new Date(selectedDateMillis[0]).toString());
+                        eventCalendar.set(Calendar.YEAR, year);
+                        eventCalendar.set(Calendar.MONTH, month);
+                        eventCalendar.set(Calendar.DAY_OF_MONTH, day);
+                        datePicked[0] = true; // mark date as picked
+                        dateText.setText(new Date(eventCalendar.getTimeInMillis()).toString());
                     },
                     c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH));
             dpd.show();
+        });
+
+        timeButton.setOnClickListener(view -> {
+            int hour = eventCalendar.get(Calendar.HOUR_OF_DAY);
+            int minute = eventCalendar.get(Calendar.MINUTE);
+
+            TimePickerDialog timePickerDialog = new TimePickerDialog(getContext(),
+                    (timePicker, selectedHour, selectedMinute) -> {
+                        eventCalendar.set(Calendar.HOUR_OF_DAY, selectedHour);
+                        eventCalendar.set(Calendar.MINUTE, selectedMinute);
+                        timePicked[0] = true; // mark time as picked
+                        timeText.setText(String.format(Locale.getDefault(), "%02d:%02d", selectedHour, selectedMinute));
+                    },
+                    hour, minute, false);
+            timePickerDialog.show();
         });
 
         Spinner recurrenceDurationSpinner = dialogView.findViewById(R.id.spinner_recurrence_duration);
@@ -236,11 +264,11 @@ public class EventsFragment extends Fragment {
                     valid = false;
                 }
 
-                if (selectedDateMillis[0] == 0) {
+                if (!datePicked[0]) {
                     dateText.setError("Please select a date");
                     valid = false;
                 } else {
-                    dateText.setError(null); // clear error
+                    dateText.setError(null);
                 }
 
                 if (!valid) return; // don't dismiss if invalid
@@ -275,10 +303,15 @@ public class EventsFragment extends Fragment {
 
                 // create and save event
                 Event event = new Event(
-                        0, title, desc, selectedDateMillis[0],
+                        0, title, desc, eventCalendar.getTimeInMillis(),
                         category, reminder, recurrence, important
                 );
                 db.insertEvent(event, repeatMonths);
+
+                if (event.getReminderMinutes() > 0) {
+                    scheduleReminder(requireContext(), event);
+                }
+
                 categorySet.add(category);
                 updateCategorySpinner();
                 refreshEventList();
@@ -300,5 +333,21 @@ public class EventsFragment extends Fragment {
         } else {
             recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         }
+    }
+
+    public static void scheduleReminder(Context context, Event event) {
+        Intent intent = new Intent(context, EventReminderReceiver.class);
+        intent.putExtra("title", "Upcoming Event: " + event.getTitle());
+        intent.putExtra("message", "Starts at " +
+                new SimpleDateFormat("hh:mm a", Locale.getDefault())
+                        .format(new Date(event.getDateMillis())));
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                context, event.getId(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        long reminderTime = event.getDateMillis() - (event.getReminderMinutes() * 60 * 1000L);
+
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        alarmManager.setExact(AlarmManager.RTC_WAKEUP, reminderTime, pendingIntent);
     }
 }
