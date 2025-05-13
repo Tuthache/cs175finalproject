@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -36,6 +37,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -43,6 +45,8 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import edu.sjsu.android.cs175finalproject.Event;
 import edu.sjsu.android.cs175finalproject.EventAdapter;
@@ -391,25 +395,129 @@ public class EventsFragment extends Fragment {
         if (requestCode == VOICE_REQUEST_CODE && resultCode == Activity.RESULT_OK && data != null) {
             ArrayList<String> result = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
             if (result != null && !result.isEmpty()) {
-                String spokenText = result.get(0);
-                showVoiceResultDialog(spokenText);
+                String input = result.get(0);
+                parseVoiceInput(input);
             }
         }
     }
 
-    private void showVoiceResultDialog(String input) {
-        // for now just prefill title field
+    private void parseVoiceInput(String input) {
+        String title = "Untitled";
+        long millis = System.currentTimeMillis();
+
+        Pattern pattern = Pattern.compile("called (.*?) on (.*?) at (.*?)$", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(input);
+
+        if (matcher.find()) {
+            title = matcher.group(1).trim();
+            String dateStr = matcher.group(2).trim();
+            String timeStr = matcher.group(3).trim();
+
+            try {
+                SimpleDateFormat df = new SimpleDateFormat("MMMM d yyyy h:mm a", Locale.US);
+                Date fullDate = df.parse(dateStr + " " + timeStr);
+                if (fullDate != null) {
+                    millis = fullDate.getTime();
+                }
+            } catch (ParseException e) {
+                Log.e("VoiceParse", "Date parse failed: " + e.getMessage());
+            }
+        }
+
+        showPrefilledAddEventDialog(title, millis);
+    }
+
+    private void showPrefilledAddEventDialog(String title, long dateMillis) {
         LayoutInflater inflater = LayoutInflater.from(getContext());
         View dialogView = inflater.inflate(R.layout.dialog_add_event, null);
 
         EditText titleInput = dialogView.findViewById(R.id.input_title);
-        titleInput.setText(input); // set spoken input as title
+        TextView dateText = dialogView.findViewById(R.id.selected_date);
+        Button dateButton = dialogView.findViewById(R.id.button_pick_date);
+        Button timeButton = dialogView.findViewById(R.id.button_pick_time);
+        TextView timeText = dialogView.findViewById(R.id.selected_time);
+        EditText descriptionInput = dialogView.findViewById(R.id.input_description);
+        EditText categoryInput = dialogView.findViewById(R.id.input_category);
+        EditText reminderInput = dialogView.findViewById(R.id.input_reminder);
+        CheckBox importantCheckbox = dialogView.findViewById(R.id.checkbox_important);
+        Spinner recurrenceSpinner = dialogView.findViewById(R.id.spinner_recurrence);
+        Spinner durationSpinner = dialogView.findViewById(R.id.spinner_recurrence_duration);
+
+        // setup spinners
+        ArrayAdapter<CharSequence> recAdapter = ArrayAdapter.createFromResource(
+                getContext(), R.array.recurrence_options, android.R.layout.simple_spinner_item);
+        recAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        recurrenceSpinner.setAdapter(recAdapter);
+
+        ArrayAdapter<CharSequence> durAdapter = ArrayAdapter.createFromResource(
+                getContext(), R.array.recurrence_duration_options, android.R.layout.simple_spinner_item);
+        durAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        durationSpinner.setAdapter(durAdapter);
+
+        Calendar eventCalendar = Calendar.getInstance();
+        eventCalendar.setTimeInMillis(dateMillis);
+        titleInput.setText(title);
+        dateText.setText(new Date(dateMillis).toString());
+        timeText.setText(String.format(Locale.getDefault(), "%02d:%02d",
+                eventCalendar.get(Calendar.HOUR_OF_DAY),
+                eventCalendar.get(Calendar.MINUTE)));
+
+        // date picker
+        dateButton.setOnClickListener(v -> {
+            DatePickerDialog dpd = new DatePickerDialog(getContext(),
+                    (view, year, month, day) -> {
+                        eventCalendar.set(Calendar.YEAR, year);
+                        eventCalendar.set(Calendar.MONTH, month);
+                        eventCalendar.set(Calendar.DAY_OF_MONTH, day);
+                        dateText.setText(new Date(eventCalendar.getTimeInMillis()).toString());
+                    },
+                    eventCalendar.get(Calendar.YEAR),
+                    eventCalendar.get(Calendar.MONTH),
+                    eventCalendar.get(Calendar.DAY_OF_MONTH));
+            dpd.show();
+        });
+
+        // time picker
+        timeButton.setOnClickListener(view -> {
+            int hour = eventCalendar.get(Calendar.HOUR_OF_DAY);
+            int minute = eventCalendar.get(Calendar.MINUTE);
+
+            TimePickerDialog timePickerDialog = new TimePickerDialog(getContext(),
+                    (timePicker, selectedHour, selectedMinute) -> {
+                        eventCalendar.set(Calendar.HOUR_OF_DAY, selectedHour);
+                        eventCalendar.set(Calendar.MINUTE, selectedMinute);
+                        timeText.setText(String.format(Locale.getDefault(), "%02d:%02d", selectedHour, selectedMinute));
+                    },
+                    hour, minute, false);
+            timePickerDialog.show();
+        });
 
         new AlertDialog.Builder(getContext())
                 .setTitle("Add Event from Voice")
                 .setView(dialogView)
                 .setPositiveButton("Add", (dialog, which) -> {
-                    Toast.makeText(getContext(), "Event created: " + input, Toast.LENGTH_SHORT).show();
+                    String desc = descriptionInput.getText().toString();
+                    String category = categoryInput.getText().toString();
+                    String recurrence = recurrenceSpinner.getSelectedItem().toString();
+                    boolean important = importantCheckbox.isChecked();
+
+                    int reminder = 0;
+                    try {
+                        reminder = Integer.parseInt(reminderInput.getText().toString());
+                    } catch (Exception ignored) {}
+
+                    int repeatMonths = 1;
+                    String durStr = durationSpinner.getSelectedItem().toString();
+                    switch (durStr) {
+                        case "3 months": repeatMonths = 3; break;
+                        case "6 months": repeatMonths = 6; break;
+                        case "12 months": repeatMonths = 12; break;
+                    }
+
+                    Event event = new Event(0, title, desc, eventCalendar.getTimeInMillis(),
+                            category, reminder, recurrence, important);
+                    db.insertEvent(event, repeatMonths);
+                    refreshEventList();
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
