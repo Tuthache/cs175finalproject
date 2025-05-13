@@ -1,23 +1,23 @@
 package edu.sjsu.android.cs175finalproject;
 
+import android.Manifest;
+import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.SharedPreferences;
-import android.os.Bundle;
-
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.app.AppCompatDelegate;
-import androidx.navigation.NavController;
-import androidx.navigation.fragment.NavHostFragment;
-import androidx.navigation.ui.NavigationUI;
-import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.navigation.NavController;
+import androidx.navigation.fragment.NavHostFragment;
+import androidx.navigation.ui.NavigationUI;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
@@ -56,14 +56,12 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    "event_channel", "Event Reminders", NotificationManager.IMPORTANCE_HIGH);
-            channel.setDescription("Reminders for upcoming events");
+        NotificationChannel channel = new NotificationChannel(
+                "event_channel", "Event Reminders", NotificationManager.IMPORTANCE_HIGH);
+        channel.setDescription("Reminders for upcoming events");
 
-            NotificationManager manager = getSystemService(NotificationManager.class);
-            manager.createNotificationChannel(channel);
-        }
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        manager.createNotificationChannel(channel);
     }
 
     @Override
@@ -74,8 +72,13 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.action_toggle_dark_mode) {
+        int itemId = item.getItemId();
+
+        if (itemId == R.id.action_toggle_dark_mode) {
             toggleDarkMode();
+            return true;
+        } else if (itemId == R.id.action_help) {
+            showHelpDialog();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -94,5 +97,13 @@ public class MainActivity extends AppCompatActivity {
             editor.putBoolean("dark_mode", true);
         }
         editor.apply();
+    }
+
+    private void showHelpDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Help")
+                .setMessage(getString(R.string.help_instructions))
+                .setPositiveButton("OK", (dialog, which) -> dialog.dismiss())
+                .show();
     }
 }

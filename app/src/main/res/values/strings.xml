@@ -24,4 +24,27 @@
         <item>Weekly</item>
         <item>Monthly</item>
     </string-array>
+    <string name="help_instructions">
+    How to use the Event Planner\n\n
+
+    Navigation:\n
+    • Use the bottom navigation bar to switch between different sections of the app.\n\n
+
+    Dashboard:\n
+    • Use the \'Upcoming\' and \'Past\' tabs to switch between viewing upcoming and past events.\n\n
+
+    Events:\n
+    • To add a new event, tap the + button on the events screen.\n
+    •\n
+    • Fill in the event details including title, description, date, time, category, etc.\n
+    • Events will show notifications as reminders when they\'re approaching.\n\n
+
+    Calendar:\n
+    • Click on dates to display the events that are happening on that day.\n\n
+
+    Settings:\n
+    • Toggle Dark Mode from the menu in the top-right corner.\n
+</string>
+    <string name="toggle_dark_mode">Toggle Dark Mode</string>
+    <string name="help">Help</string>
 </resources>
