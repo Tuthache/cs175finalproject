@@ -4,13 +4,14 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.tabs.TabLayout;
 
 import java.util.ArrayList;
 
@@ -26,31 +27,43 @@ public class DashboardFragment extends Fragment {
     private EventDatabase db;
     private DashboardAdapter adapter;
     private static final int MAX_DASHBOARD_EVENTS = 5;
+    private boolean showingPastEvents = false;
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
-        DashboardViewModel dashboardViewModel =
-                new ViewModelProvider(this).get(DashboardViewModel.class);
+        new ViewModelProvider(this).get(DashboardViewModel.class);
 
         binding = FragmentDashboardBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
 
-        // Setup title
-        final TextView textView = binding.textDashboard;
-        dashboardViewModel.getText().observe(getViewLifecycleOwner(), textView::setText);
+        TabLayout tabLayout = binding.tabLayout;
 
-        // Setup the RecyclerView for events
         recyclerView = binding.recyclerEvents;
         db = new EventDatabase(requireContext());
 
-        // Get only the top 5 upcoming events
-        ArrayList<Event> upcomingEvents = db.getUpcomingEvents(MAX_DASHBOARD_EVENTS);
+        ArrayList<Event> events = db.getUpcomingEvents(MAX_DASHBOARD_EVENTS);
+        adapter = new DashboardAdapter(events);
 
-        adapter = new DashboardAdapter(upcomingEvents);
-
-        // Use LinearLayoutManager for the dashboard
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(adapter);
+
+        tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                showingPastEvents = tab.getPosition() == 1; // Position 1 is "Past Events"
+                refreshEventList();
+            }
+
+            @Override
+            public void onTabUnselected(TabLayout.Tab tab) {
+                // Not needed
+            }
+
+            @Override
+            public void onTabReselected(TabLayout.Tab tab) {
+                // Not needed
+            }
+        });
 
         return root;
     }
@@ -58,7 +71,6 @@ public class DashboardFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // Refresh the events when returning to this fragment
         refreshEventList();
     }
 
@@ -69,7 +81,14 @@ public class DashboardFragment extends Fragment {
     }
 
     private void refreshEventList() {
-        ArrayList<Event> events = db.getUpcomingEvents(MAX_DASHBOARD_EVENTS);
+        ArrayList<Event> events;
+
+        if (showingPastEvents) {
+            events = db.getPastEvents(MAX_DASHBOARD_EVENTS);
+        } else {
+            events = db.getUpcomingEvents(MAX_DASHBOARD_EVENTS);
+        }
+
         adapter = new DashboardAdapter(events);
         recyclerView.setAdapter(adapter);
     }

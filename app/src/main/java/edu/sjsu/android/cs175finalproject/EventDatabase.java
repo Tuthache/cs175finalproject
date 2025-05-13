@@ -1,12 +1,23 @@
 package edu.sjsu.android.cs175finalproject;
 
-import static edu.sjsu.android.cs175finalproject.EventDBSchema.EventTable.*;
+import static edu.sjsu.android.cs175finalproject.EventDBSchema.EventTable.CATEGORY;
+import static edu.sjsu.android.cs175finalproject.EventDBSchema.EventTable.DATE;
+import static edu.sjsu.android.cs175finalproject.EventDBSchema.EventTable.DESCRIPTION;
+import static edu.sjsu.android.cs175finalproject.EventDBSchema.EventTable.ID;
+import static edu.sjsu.android.cs175finalproject.EventDBSchema.EventTable.IMPORTANT;
+import static edu.sjsu.android.cs175finalproject.EventDBSchema.EventTable.RECURRENCE;
+import static edu.sjsu.android.cs175finalproject.EventDBSchema.EventTable.REMINDER;
+import static edu.sjsu.android.cs175finalproject.EventDBSchema.EventTable.TABLE_NAME;
+import static edu.sjsu.android.cs175finalproject.EventDBSchema.EventTable.TITLE;
 
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
-import android.database.sqlite.*;
-import java.util.*;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+
+import java.util.ArrayList;
+import java.util.Calendar;
 
 // helper class to create/manage our sqlite event database
 public class EventDatabase extends SQLiteOpenHelper {
@@ -40,9 +51,9 @@ public class EventDatabase extends SQLiteOpenHelper {
         onCreate(db);
     }
 
-    public long insertEvent(Event event, int repeatMonths) {
+    public void insertEvent(Event event, int repeatMonths) {
         SQLiteDatabase db = getWritableDatabase();
-        long baseId = insertSingleEvent(db, event);
+        insertSingleEvent(db, event);
 
         String recurrence = event.getRecurrence();
         if (recurrence != null && !recurrence.equalsIgnoreCase("None")) {
@@ -71,11 +82,10 @@ public class EventDatabase extends SQLiteOpenHelper {
             }
         }
 
-        return baseId;
     }
 
     // helper method to reduce code duplication
-    private long insertSingleEvent(SQLiteDatabase db, Event event) {
+    private void insertSingleEvent(SQLiteDatabase db, Event event) {
         ContentValues values = new ContentValues();
         values.put(EventDBSchema.EventTable.TITLE, event.getTitle());
         values.put(EventDBSchema.EventTable.DESCRIPTION, event.getDescription());
@@ -84,24 +94,24 @@ public class EventDatabase extends SQLiteOpenHelper {
         values.put(EventDBSchema.EventTable.REMINDER, event.getReminderMinutes());
         values.put(EventDBSchema.EventTable.RECURRENCE, event.getRecurrence());
         values.put(EventDBSchema.EventTable.IMPORTANT, event.isImportant() ? 1 : 0);
-        return db.insert(EventDBSchema.EventTable.TABLE_NAME, null, values);
+        db.insert(EventDBSchema.EventTable.TABLE_NAME, null, values);
     }
 
     public ArrayList<Event> getUpcomingEvents(int limit) {
-        // get all upcoming events sorted by date
-
         ArrayList<Event> events = new ArrayList<>();
         SQLiteDatabase db = getReadableDatabase();
+
+        long currentTimeMillis = System.currentTimeMillis();
 
         Cursor cursor = db.query(
                 TABLE_NAME,
                 null,
-                null,
-                null,
+                DATE + " >= ?",
+                new String[]{String.valueOf(currentTimeMillis)},
                 null,
                 null,
                 DATE + " ASC",
-                limit > 0 ? String.valueOf(limit) : null //null returns all upcoming events
+                limit > 0 ? String.valueOf(limit) : null
         );
 
         while (cursor.moveToNext()) {
@@ -121,6 +131,7 @@ public class EventDatabase extends SQLiteOpenHelper {
         cursor.close();
         return events;
     }
+
     public void updateEvent(Event event) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues values = new ContentValues();
@@ -144,4 +155,41 @@ public class EventDatabase extends SQLiteOpenHelper {
         SQLiteDatabase db = getWritableDatabase();
         db.delete(TABLE_NAME, ID + " = ?", new String[]{String.valueOf(eventId)});
     }
+
+    public ArrayList<Event> getPastEvents(int limit) {
+        // get past events sorted by date (most recent first)
+        ArrayList<Event> events = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+
+        long currentTimeMillis = System.currentTimeMillis();
+
+        Cursor cursor = db.query(
+                TABLE_NAME,
+                null,
+                DATE + " < ?",
+                new String[]{String.valueOf(currentTimeMillis)},
+                null,
+                null,
+                DATE + " DESC",
+                limit > 0 ? String.valueOf(limit) : null
+        );
+
+        while (cursor.moveToNext()) {
+            int id = cursor.getInt(cursor.getColumnIndexOrThrow(ID));
+            String title = cursor.getString(cursor.getColumnIndexOrThrow(TITLE));
+            String description = cursor.getString(cursor.getColumnIndexOrThrow(DESCRIPTION));
+            long dateMillis = cursor.getLong(cursor.getColumnIndexOrThrow(DATE));
+            String category = cursor.getString(cursor.getColumnIndexOrThrow(CATEGORY));
+            int reminder = cursor.getInt(cursor.getColumnIndexOrThrow(REMINDER));
+            String recurrence = cursor.getString(cursor.getColumnIndexOrThrow(RECURRENCE));
+            boolean important = cursor.getInt(cursor.getColumnIndexOrThrow(IMPORTANT)) == 1;
+
+            Event event = new Event(id, title, description, dateMillis, category, reminder, recurrence, important);
+            events.add(event);
+        }
+
+        cursor.close();
+        return events;
+    }
+
 }

@@ -5,6 +5,8 @@
     <string name="title_calendar">Calendar</string>
     <string name="upcoming_events">Upcoming Events</string>
     <string name="all_events">All Events</string>
+    <string name="upcoming">Upcoming</string>
+    <string name="past">Past</string>
     <string-array name="sort_filter_options">
         <item>All</item>
         <item>Important only</item>
